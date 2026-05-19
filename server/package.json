@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && tsc-alias",
+    "build": "tsdown src/server.ts --format esm --clean --minify",
     "start": "node ./dist/server.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev"

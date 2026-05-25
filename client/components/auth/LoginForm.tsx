@@ -96,7 +96,7 @@ export default function LoginForm() {
         <CardFooter className="flex flex-col gap-4 border-t-0 bg-transparent pt-0">
           <Button
             type="submit"
-            className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+            className="w-full bg-accent text-accent-foreground hover:bg-accent/90 mt-4"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Signing in..." : "Sign in"}

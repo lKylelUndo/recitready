@@ -1,5 +1,5 @@
-export default function LoginPage() {
-    return (
-        <h1>Hello</h1>
-    )
+import LoginPage from "@/components/auth/LoginPage"
+
+export default function Page() {
+  return <LoginPage />
 }

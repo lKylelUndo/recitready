@@ -6,3 +6,72 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum DifficultyMode {
+  easy
+  medium
+  hard
+}
+
+enum TeacherMode {
+  friendly
+  strict
+  terror
+}
+
+model User {
+  id           String            @id @default(cuid())
+  name         String
+  email        String            @unique
+  passwordHash String
+
+  sessions PracticeSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PracticeSession {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  topic       String
+  reportTitle String
+  notes       String?
+
+  difficulty DifficultyMode
+  teacherMode TeacherMode
+
+  overallScore Int?
+  aiPerformanceSummary Json?
+
+  createdAt DateTime @default(now())
+  endedAt   DateTime?
+
+  turns PracticeTurn[]
+}
+
+model PracticeTurn {
+  id String @id @default(cuid())
+
+  sessionId String
+  session   PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  turnIndex Int
+
+  questionText String
+  questionTimerSeconds Int?
+  answerText String?
+
+  feedbackText String?
+  evaluation Json?
+
+  submittedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, turnIndex])
+  @@index([sessionId])
+}

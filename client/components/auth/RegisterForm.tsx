@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -26,6 +27,7 @@ import { registerSchema, type RegisterInput } from "@/lib/validations/auth"
 
 export default function RegisterForm() {
   const [apiError, setApiError] = useState<string | null>(null)
+  const router = useRouter()
 
   const {
     register,
@@ -46,7 +48,7 @@ export default function RegisterForm() {
     const { confirmPassword: _, ...payload } = data
     try {
       await registerUser(payload)
-      // TODO: redirect to /login or /dashboard after auth is wired
+      router.push("/login")
     } catch (error) {
       setApiError(
         error instanceof Error

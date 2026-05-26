@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { Clock, MessageSquare, Send } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -13,16 +14,69 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-
-const MOCK_QUESTION =
-  "What is database normalization, and why is it important in relational database design?"
-
-const MOCK_FEEDBACK =
-  "Good explanation, but adding a real-world example could improve your answer. Consider mentioning redundancy and update anomalies."
+import { getNextQuestion, submitAnswer } from "@/lib/api/practice"
 
 export default function PracticeSessionView() {
+  const searchParams = useSearchParams()
+  const sessionId = useMemo(
+    () => searchParams.get("sessionId") ?? "",
+    [searchParams]
+  )
+
   const [answer, setAnswer] = useState("")
   const [showFeedback, setShowFeedback] = useState(false)
+  const [loadingQuestion, setLoadingQuestion] = useState(false)
+  const [questionError, setQuestionError] = useState<string | null>(null)
+  const [turnId, setTurnId] = useState<string>("")
+  const [questionText, setQuestionText] = useState<string>("")
+  const [feedbackText, setFeedbackText] = useState<string>("")
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!sessionId) return
+      setLoadingQuestion(true)
+      setQuestionError(null)
+      try {
+        const next = await getNextQuestion(sessionId)
+        if (cancelled) return
+        setTurnId(next.data.id)
+        setQuestionText(next.data.questionText)
+      } catch (e) {
+        if (cancelled) return
+        setQuestionError(e instanceof Error ? e.message : "Failed to load question")
+      } finally {
+        if (!cancelled) setLoadingQuestion(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId])
+
+  async function onSubmitAnswer() {
+    if (!turnId) return
+    setShowFeedback(false)
+    const trimmed = answer.trim()
+    if (!trimmed) return
+    const result = await submitAnswer(turnId, trimmed)
+    setFeedbackText(result.data.feedbackText ?? "")
+    setShowFeedback(true)
+  }
+
+  async function onNextQuestion() {
+    if (!sessionId) return
+    setAnswer("")
+    setShowFeedback(false)
+    setFeedbackText("")
+    setLoadingQuestion(true)
+    setQuestionError(null)
+    const next = await getNextQuestion(sessionId)
+    setTurnId(next.data.id)
+    setQuestionText(next.data.questionText)
+    setLoadingQuestion(false)
+  }
 
   return (
     <div className="space-y-6">
@@ -49,7 +103,15 @@ export default function PracticeSessionView() {
           <CardDescription>Answer before the timer runs out.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-base leading-relaxed text-primary">{MOCK_QUESTION}</p>
+          {questionError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {questionError}
+            </p>
+          ) : (
+            <p className="text-base leading-relaxed text-primary">
+              {loadingQuestion ? "Loading question..." : questionText}
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -69,7 +131,7 @@ export default function PracticeSessionView() {
           />
           <Button
             className="bg-accent text-accent-foreground hover:bg-accent/90"
-            onClick={() => setShowFeedback(true)}
+            onClick={onSubmitAnswer}
             disabled={!answer.trim()}
           >
             <Send className="size-4" />
@@ -85,7 +147,7 @@ export default function PracticeSessionView() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm leading-relaxed text-muted-foreground">
-              {MOCK_FEEDBACK}
+              {feedbackText}
             </p>
             <div className="flex flex-wrap gap-3">
               <Button
@@ -94,7 +156,9 @@ export default function PracticeSessionView() {
               >
                 <Link href="/practice/summary">End session & view summary</Link>
               </Button>
-              <Button variant="outline">Next follow-up question</Button>
+              <Button variant="outline" onClick={onNextQuestion} disabled={loadingQuestion}>
+                Next follow-up question
+              </Button>
             </div>
           </CardContent>
         </Card>

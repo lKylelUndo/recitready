@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -26,6 +27,7 @@ import { loginSchema, type LoginInput } from "@/lib/validations/auth"
 
 export default function LoginForm() {
   const [apiError, setApiError] = useState<string | null>(null)
+  const router = useRouter()
 
   const {
     register,
@@ -43,7 +45,8 @@ export default function LoginForm() {
     setApiError(null)
     try {
       await loginUser(data)
-      // TODO: redirect to /dashboard after auth is wired
+      router.push("/dashboard")
+      router.refresh()
     } catch (error) {
       setApiError(
         error instanceof Error ? error.message : "Failed to sign in. Try again."

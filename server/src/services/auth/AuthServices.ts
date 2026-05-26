@@ -68,6 +68,10 @@ export class AuthServices {
     return AUTH_COOKIE_NAME;
   }
 
+  async getUserById(userId: string) {
+    return this.authRepository.findUserById(userId);
+  }
+
   private signToken(userId: string, email: string) {
     return jwt.sign({ sub: userId, email }, ENV.JWT_SECRET, { expiresIn: "7d" });
   }

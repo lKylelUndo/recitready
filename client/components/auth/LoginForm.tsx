@@ -22,12 +22,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/context/auth/AuthContext"
 import { loginUser } from "@/lib/api/auth"
 import { loginSchema, type LoginInput } from "@/lib/validations/auth"
 
 export default function LoginForm() {
   const [apiError, setApiError] = useState<string | null>(null)
   const router = useRouter()
+  const { setUser } = useAuth()
 
   const {
     register,
@@ -44,9 +46,9 @@ export default function LoginForm() {
   async function onSubmit(data: LoginInput) {
     setApiError(null)
     try {
-      await loginUser(data)
-      router.push("/dashboard")
-      router.refresh()
+      const response = await loginUser(data)
+      if (response.user) setUser(response.user)
+      router.replace("/dashboard")
     } catch (error) {
       setApiError(
         error instanceof Error ? error.message : "Failed to sign in. Try again."

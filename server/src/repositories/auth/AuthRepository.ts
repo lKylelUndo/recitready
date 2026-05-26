@@ -13,5 +13,12 @@ export class AuthRepository {
       select: { id: true, name: true, email: true },
     });
   }
+
+  async findUserById(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: { id: true, name: true, email: true },
+    });
+  }
 }
 

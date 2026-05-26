@@ -85,10 +85,13 @@ export class AuthController {
     try {
       if (!req.auth?.userId) throw new HttpError(401, "Unauthorized");
 
+      const user = await this.authServices.getUserById(req.auth.userId);
+      if (!user) throw new HttpError(401, "Unauthorized");
+
       return res.status(200).json({
         status: "success",
         message: "Authenticated user",
-        user: { id: req.auth.userId },
+        user,
       });
     } catch (err) {
       return next(err);

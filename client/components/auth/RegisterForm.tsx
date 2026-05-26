@@ -22,12 +22,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/context/auth/AuthContext"
 import { registerUser } from "@/lib/api/auth"
 import { registerSchema, type RegisterInput } from "@/lib/validations/auth"
 
 export default function RegisterForm() {
   const [apiError, setApiError] = useState<string | null>(null)
   const router = useRouter()
+  const { setUser } = useAuth()
 
   const {
     register,
@@ -47,8 +49,9 @@ export default function RegisterForm() {
     setApiError(null)
     const { confirmPassword: _, ...payload } = data
     try {
-      await registerUser(payload)
-      router.push("/login")
+      const response = await registerUser(payload)
+      if (response.user) setUser(response.user)
+      router.replace("/dashboard")
     } catch (error) {
       setApiError(
         error instanceof Error

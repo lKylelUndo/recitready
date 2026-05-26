@@ -1,7 +1,11 @@
+"use client"
+
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { GraduationCap } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/context/auth/AuthContext"
 import { APP_NAME, NAV_LINKS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
@@ -11,7 +15,14 @@ type HeaderProps = {
 }
 
 export default function Header({ variant = "public", className }: HeaderProps) {
+  const router = useRouter()
+  const { logout } = useAuth()
   const links = variant === "app" ? NAV_LINKS.app : NAV_LINKS.public
+
+  async function handleLogout() {
+    await logout()
+    router.replace("/login")
+  }
 
   return (
     <header
@@ -44,8 +55,8 @@ export default function Header({ variant = "public", className }: HeaderProps) {
 
         <div className="flex items-center gap-2">
           {variant === "app" ? (
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/login">Log out</Link>
+            <Button variant="outline" size="sm" onClick={() => void handleLogout()}>
+              Log out
             </Button>
           ) : (
             <>

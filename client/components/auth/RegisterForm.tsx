@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -21,11 +22,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/context/auth/AuthContext"
 import { registerUser } from "@/lib/api/auth"
 import { registerSchema, type RegisterInput } from "@/lib/validations/auth"
 
 export default function RegisterForm() {
   const [apiError, setApiError] = useState<string | null>(null)
+  const router = useRouter()
+  const { setUser } = useAuth()
 
   const {
     register,
@@ -45,8 +49,9 @@ export default function RegisterForm() {
     setApiError(null)
     const { confirmPassword: _, ...payload } = data
     try {
-      await registerUser(payload)
-      // TODO: redirect to /login or /dashboard after auth is wired
+      const response = await registerUser(payload)
+      if (response.user) setUser(response.user)
+      router.replace("/dashboard")
     } catch (error) {
       setApiError(
         error instanceof Error

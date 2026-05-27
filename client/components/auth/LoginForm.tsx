@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -21,11 +22,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/context/auth/AuthContext"
 import { loginUser } from "@/lib/api/auth"
 import { loginSchema, type LoginInput } from "@/lib/validations/auth"
 
 export default function LoginForm() {
   const [apiError, setApiError] = useState<string | null>(null)
+  const router = useRouter()
+  const { setUser } = useAuth()
 
   const {
     register,
@@ -42,8 +46,9 @@ export default function LoginForm() {
   async function onSubmit(data: LoginInput) {
     setApiError(null)
     try {
-      await loginUser(data)
-      // TODO: redirect to /dashboard after auth is wired
+      const response = await loginUser(data)
+      if (response.user) setUser(response.user)
+      router.replace("/dashboard")
     } catch (error) {
       setApiError(
         error instanceof Error ? error.message : "Failed to sign in. Try again."

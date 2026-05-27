@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useEffect, useMemo, useState } from "react"
 import {
   ArrowRight,
   BookOpen,
@@ -15,15 +18,56 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { MOCK_HISTORY } from "@/lib/constants"
+import { getPracticeDashboard, type PracticeHistoryItem } from "@/lib/api/practice"
 
-const stats = [
-  { label: "Sessions completed", value: "12", icon: BookOpen },
-  { label: "Average score", value: "84%", icon: TrendingUp },
-  { label: "Last practiced", value: "Yesterday", icon: History },
-]
+function formatDate(isoDate: string | null) {
+  if (!isoDate) return "No sessions yet"
+  return new Date(isoDate).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
+}
 
 export default function DashboardView() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [recentSessions, setRecentSessions] = useState<PracticeHistoryItem[]>([])
+  const [sessionsCompleted, setSessionsCompleted] = useState(0)
+  const [averageScore, setAverageScore] = useState(0)
+  const [lastPracticedAt, setLastPracticedAt] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const response = await getPracticeDashboard()
+        if (cancelled) return
+        setRecentSessions(response.data.recentSessions)
+        setSessionsCompleted(response.data.stats.sessionsCompleted)
+        setAverageScore(response.data.stats.averageScore)
+        setLastPracticedAt(response.data.stats.lastPracticedAt)
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load dashboard")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const stats = useMemo(
+    () => [
+      { label: "Sessions completed", value: String(sessionsCompleted), icon: BookOpen },
+      { label: "Average score", value: `${averageScore}%`, icon: TrendingUp },
+      { label: "Last practiced", value: formatDate(lastPracticedAt), icon: History },
+    ],
+    [averageScore, lastPracticedAt, sessionsCompleted]
+  )
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -74,7 +118,16 @@ export default function DashboardView() {
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
-          {MOCK_HISTORY.slice(0, 2).map((session) => (
+          {loading && <p className="text-sm text-muted-foreground">Loading dashboard...</p>}
+          {error && (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
+          {!loading && !error && recentSessions.length === 0 && (
+            <p className="text-sm text-muted-foreground">No recent sessions yet.</p>
+          )}
+          {recentSessions.slice(0, 2).map((session) => (
             <div
               key={session.id}
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-4"
@@ -82,11 +135,12 @@ export default function DashboardView() {
               <div>
                 <p className="font-medium text-primary">{session.topic}</p>
                 <p className="text-sm text-muted-foreground">
-                  {session.difficulty} · {session.teacherMode} · {session.date}
+                  {session.difficulty} · {session.teacherMode} ·{" "}
+                  {new Date(session.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <span className="rounded-full bg-accent/10 px-3 py-1 text-sm font-semibold text-accent">
-                {session.score}%
+                {session.overallScore ?? 0}%
               </span>
             </div>
           ))}

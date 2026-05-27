@@ -27,6 +27,7 @@ import {
   startSessionSchema,
   type StartSessionInput,
 } from "@/lib/validations/practice"
+import { startPracticeSession } from "@/lib/api/practice"
 
 export default function StartSessionForm() {
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -52,10 +53,17 @@ export default function StartSessionForm() {
   const difficulty = watch("difficulty")
   const teacherMode = watch("teacherMode")
 
-  function onSubmit(_data: StartSessionInput) {
+  async function onSubmit(data: StartSessionInput) {
     setSubmitError(null)
-    // TODO: call API to create session, then redirect to /practice/session
-    window.location.href = "/practice/session"
+    try {
+      const result = await startPracticeSession(data)
+      const sessionId = result.data.id
+      window.location.href = `/practice/session?sessionId=${encodeURIComponent(
+        sessionId
+      )}`
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Failed to start session")
+    }
   }
 
   return (

@@ -1,14 +1,16 @@
 import { api } from "@/lib/api/axios"
+import type { AuthUser } from "@/context/auth/types"
 import type { LoginInput, RegisterInput } from "@/lib/validations/auth"
 
 export type AuthResponse = {
   status: string
   message: string
-  user?: {
-    id: string
-    name: string
-    email: string
-  }
+  user?: AuthUser
+}
+
+export async function getCurrentUser(): Promise<AuthUser> {
+  const response = await api.get<{ user: AuthUser }>("/auth/me")
+  return response.data.user
 }
 
 export async function loginUser(data: LoginInput): Promise<AuthResponse> {

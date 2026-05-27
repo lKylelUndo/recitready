@@ -30,3 +30,7 @@ export const endSessionRequestSchema = z.object({
   params: z.any().optional(),
 });
 
+export type StartSessionBody = z.infer<typeof startSessionBodySchema>;
+export type SubmitAnswerBody = z.infer<typeof submitAnswerRequestSchema>["body"];
+export type EndSessionBody = z.infer<typeof endSessionRequestSchema>["body"];
+

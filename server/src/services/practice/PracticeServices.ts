@@ -1,25 +1,28 @@
 import { HttpError } from "@/lib/httpError";
-import { sanitizeAiText } from "@/lib/sanitizeAiText";
+import {
+  ABANDONED_SESSION_MESSAGE,
+  DEFAULT_FEEDBACK_TEXT,
+} from "@/constants/practice.constants";
+import { buildEvaluateAnswerPrompt } from "@/prompts/evaluateAnswer.prompt";
+import { buildNextQuestionPrompt } from "@/prompts/nextQuestion.prompt";
 import { PracticeRepository } from "@/repositories/practice/PracticeRepository";
 import { TurnRepository } from "@/repositories/practice/TurnRepository";
 import { GeminiServices } from "@/services/ai/GeminiServices";
+import type { EvaluateAnswerResult } from "@/types/practice.types";
+import { formatTurnHistory } from "@/utils/formatTurnHistory";
+import { parseAiJsonResponse } from "@/utils/parseAiJsonResponse";
+import { sanitizeAiText } from "@/utils/sanitizeAiText";
+import { buildSessionPerformanceSummary } from "@/utils/sessionScoring";
+import { timerForDifficulty } from "@/utils/timerForDifficulty";
 import { Prisma } from "@/generated/prisma/client";
-
-type Difficulty = "easy" | "medium" | "hard";
-type TeacherMode = "friendly" | "strict" | "terror";
-
-function timerForDifficulty(difficulty: Difficulty) {
-  if (difficulty === "easy") return 60;
-  if (difficulty === "medium") return 45;
-  return 30;
-}
+import type { StartSessionBody } from "@/routes/practice/practice.validators";
 
 export class PracticeServices {
   private practiceRepository = new PracticeRepository();
   private turnRepository = new TurnRepository();
   private geminiServices = new GeminiServices();
 
-  async startSession(userId: string, input: any) {
+  async startSession(userId: string, input: StartSessionBody) {
     return this.practiceRepository.createSession({
       userId,
       topic: input.topic,
@@ -40,28 +43,20 @@ export class PracticeServices {
     if (existingTurn) return existingTurn;
 
     const turnIndex = await this.turnRepository.getNextTurnIndex(sessionId);
+    const history = formatTurnHistory(session.turns);
 
-    const history = session.turns
-      .filter((t) => t.submittedAt)
-      .map((t) => `Q${t.turnIndex + 1}: ${t.questionText}\nA: ${t.answerText ?? ""}`)
-      .join("\n\n");
-
-    const prompt = `You are an AI teacher conducting an oral recitation.
-Teacher mode: ${session.teacherMode}
-Difficulty: ${session.difficulty}
-Topic: ${session.topic}
-Report title: ${session.reportTitle}
-Notes (optional): ${session.notes ?? ""}
-
-Previous Q&A:
-${history || "(none)"}
-
-Generate ONE next question only. Keep it concise and realistic for classroom oral questioning.
-Return plain text only: no markdown, no asterisks, no bullet points, no labels like "Question:".`;
+    const prompt = buildNextQuestionPrompt({
+      teacherMode: session.teacherMode,
+      difficulty: session.difficulty,
+      topic: session.topic,
+      reportTitle: session.reportTitle,
+      notes: session.notes,
+      history,
+    });
 
     const { text } = await this.geminiServices.generateText(prompt);
     const questionText = sanitizeAiText(text);
-    const questionTimerSeconds = timerForDifficulty(session.difficulty as Difficulty);
+    const questionTimerSeconds = timerForDifficulty(session.difficulty);
 
     try {
       return await this.turnRepository.createTurn({
@@ -90,41 +85,20 @@ Return plain text only: no markdown, no asterisks, no bullet points, no labels l
     if (!session) throw new HttpError(404, "Session not found");
     if (session.userId !== userId) throw new HttpError(403, "Forbidden");
 
-    const prompt = `You are an AI teacher evaluating a student's oral answer.
-Teacher mode: ${session.teacherMode}
-Difficulty: ${session.difficulty}
-Topic: ${session.topic}
-
-Question: ${turn.questionText}
-Student answer: ${answerText}
-
-Return ONLY valid JSON in this shape:
-{
-  "feedbackText": "2-4 sentences feedback in the teacher's tone",
-  "evaluation": {
-    "correctness": 0-100,
-    "clarity": 0-100,
-    "completeness": 0-100,
-    "explanationQuality": 0-100,
-    "suggestions": ["...", "..."]
-  }
-}`;
+    const prompt = buildEvaluateAnswerPrompt({
+      teacherMode: session.teacherMode,
+      difficulty: session.difficulty,
+      topic: session.topic,
+      questionText: turn.questionText,
+      answerText,
+    });
 
     const { text } = await this.geminiServices.generateText(prompt);
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new HttpError(500, "AI response parsing failed");
-
-    const parsed = JSON.parse(jsonMatch[0]) as {
-      feedbackText: string;
-      evaluation: any;
-    };
+    const parsed = parseAiJsonResponse<EvaluateAnswerResult>(text);
 
     return this.turnRepository.submitAnswer(turnId, {
       answerText,
-      feedbackText: sanitizeAiText(
-        parsed.feedbackText ?? "Good effort. Try to add more detail."
-      ),
+      feedbackText: sanitizeAiText(parsed.feedbackText ?? DEFAULT_FEEDBACK_TEXT),
       evaluation: parsed.evaluation ?? {},
     });
   }
@@ -150,46 +124,17 @@ Return ONLY valid JSON in this shape:
         aiPerformanceSummary: {
           abandoned: true,
           answeredQuestions: 0,
-          message: "Session ended before any answers were submitted.",
+          message: ABANDONED_SESSION_MESSAGE,
         },
         totalDurationSeconds: duration,
       });
     }
 
-    const metricKeys = ["correctness", "clarity", "completeness", "explanationQuality"] as const;
-    const metricTotals = metricKeys.reduce<Record<string, number>>((acc, key) => {
-      acc[key] = 0;
-      return acc;
-    }, {});
-
-    for (const turn of answeredTurns) {
-      const evaluation = (turn.evaluation ?? {}) as Record<string, number | string[]>;
-      for (const key of metricKeys) {
-        const value = evaluation[key];
-        if (typeof value === "number") metricTotals[key] += value;
-      }
-    }
-
-    const metricAverages = metricKeys.reduce<Record<string, number>>((acc, key) => {
-      acc[key] = Math.round(metricTotals[key] / answeredTurns.length);
-      return acc;
-    }, {});
-
-    const overallScore = Math.round(
-      metricKeys.reduce((sum, key) => sum + metricAverages[key], 0) / metricKeys.length
+    const { overallScore, aiPerformanceSummary } = buildSessionPerformanceSummary(
+      answeredTurns.map((turn) => ({
+        evaluation: (turn.evaluation ?? null) as EvaluateAnswerResult["evaluation"] | null,
+      }))
     );
-
-    const allSuggestions = answeredTurns.flatMap((turn) => {
-      const suggestions = (turn.evaluation as Record<string, unknown>)?.suggestions;
-      return Array.isArray(suggestions) ? suggestions.filter((item) => typeof item === "string") : [];
-    }) as string[];
-
-    const uniqueSuggestions = [...new Set(allSuggestions)];
-    const aiPerformanceSummary = {
-      answeredQuestions: answeredTurns.length,
-      metrics: metricAverages,
-      suggestions: uniqueSuggestions.slice(0, 6),
-    };
 
     return this.practiceRepository.endSession(sessionId, {
       overallScore,
@@ -226,4 +171,3 @@ Return ONLY valid JSON in this shape:
     return session;
   }
 }
-

@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/axios"
-import type { AuthUser } from "@/context/auth/types"
+import type { AuthUser } from "@/types/auth"
 import type { LoginInput, RegisterInput } from "@/lib/validations/auth"
 
 export type AuthResponse = {

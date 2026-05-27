@@ -1,21 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ENV } from "@/config/env";
-
-const AVAILABLE_MODELS = [
-  "gemini-2.5-pro",
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-preview-09-2025",
-  "gemini-2.5-flash-lite",
-  "gemini-2.5-flash-lite-preview-09-2025",
-  "gemini-2.0-flash",
-  "gemini-2.0-flash-lite",
-  "gemini-1.5-pro",
-  "gemini-1.5-flash",
-] as const;
-
-function getRandomModel(): string {
-  return AVAILABLE_MODELS[Math.floor(Math.random() * AVAILABLE_MODELS.length)];
-}
+import { GEMINI_FALLBACK_MODEL, GEMINI_MODELS } from "@/constants/ai.constants";
+import { pickGeminiModel } from "@/utils/pickGeminiModel";
 
 export class GeminiServices {
   private genAI: GoogleGenerativeAI;
@@ -28,14 +14,13 @@ export class GeminiServices {
   }
 
   async generateText(prompt: string): Promise<{ text: string; model: string }> {
-    // Try rotating models until one works
     const attemptedModels = new Set<string>();
 
-    for (let attempt = 0; attempt < AVAILABLE_MODELS.length; attempt++) {
+    for (let attempt = 0; attempt < GEMINI_MODELS.length; attempt++) {
       let modelName: string;
       do {
-        modelName = getRandomModel();
-      } while (attemptedModels.has(modelName) && attemptedModels.size < AVAILABLE_MODELS.length);
+        modelName = pickGeminiModel();
+      } while (attemptedModels.has(modelName) && attemptedModels.size < GEMINI_MODELS.length);
 
       attemptedModels.add(modelName);
 
@@ -49,11 +34,9 @@ export class GeminiServices {
       }
     }
 
-    // final fallback (should rarely happen)
-    const fallbackModel = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const fallbackModel = this.genAI.getGenerativeModel({ model: GEMINI_FALLBACK_MODEL });
     const result = await fallbackModel.generateContent(prompt);
     const response = await result.response;
-    return { text: response.text(), model: "gemini-2.5-flash" };
+    return { text: response.text(), model: GEMINI_FALLBACK_MODEL };
   }
 }
-

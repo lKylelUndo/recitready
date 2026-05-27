@@ -18,16 +18,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { getPracticeDashboard, type PracticeHistoryItem } from "@/lib/api/practice"
-
-function formatDate(isoDate: string | null) {
-  if (!isoDate) return "No sessions yet"
-  return new Date(isoDate).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
-}
+import { getPracticeDashboard } from "@/lib/api/practice"
+import { formatDate, formatDateOrEmpty, formatSessionMeta } from "@/lib/formatters"
+import { getErrorMessage } from "@/lib/errors"
+import type { PracticeHistoryItem } from "@/types/practice"
 
 export default function DashboardView() {
   const [loading, setLoading] = useState(true)
@@ -48,7 +42,7 @@ export default function DashboardView() {
         setAverageScore(response.data.stats.averageScore)
         setLastPracticedAt(response.data.stats.lastPracticedAt)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load dashboard")
+        if (!cancelled) setError(getErrorMessage(err, "Failed to load dashboard"))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -63,7 +57,11 @@ export default function DashboardView() {
     () => [
       { label: "Sessions completed", value: String(sessionsCompleted), icon: BookOpen },
       { label: "Average score", value: `${averageScore}%`, icon: TrendingUp },
-      { label: "Last practiced", value: formatDate(lastPracticedAt), icon: History },
+      {
+        label: "Last practiced",
+        value: formatDateOrEmpty(lastPracticedAt),
+        icon: History,
+      },
     ],
     [averageScore, lastPracticedAt, sessionsCompleted]
   )
@@ -135,8 +133,11 @@ export default function DashboardView() {
               <div>
                 <p className="font-medium text-primary">{session.topic}</p>
                 <p className="text-sm text-muted-foreground">
-                  {session.difficulty} · {session.teacherMode} ·{" "}
-                  {new Date(session.createdAt).toLocaleDateString()}
+                  {formatSessionMeta(
+                    session.difficulty,
+                    session.teacherMode,
+                    formatDate(session.createdAt)
+                  )}
                 </p>
               </div>
               <span className="rounded-full bg-accent/10 px-3 py-1 text-sm font-semibold text-accent">

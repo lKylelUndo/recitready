@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/context/auth/AuthContext"
 import { registerUser } from "@/lib/api/auth"
+import { getErrorMessage } from "@/lib/errors"
 import { registerSchema, type RegisterInput } from "@/lib/validations/auth"
 
 export default function RegisterForm() {
@@ -53,11 +54,7 @@ export default function RegisterForm() {
       if (response.user) setUser(response.user)
       router.replace("/dashboard")
     } catch (error) {
-      setApiError(
-        error instanceof Error
-          ? error.message
-          : "Failed to create account. Try again."
-      )
+      setApiError(getErrorMessage(error, "Failed to create account. Try again."))
     }
   }
 

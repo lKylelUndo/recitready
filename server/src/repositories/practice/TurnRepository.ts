@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { TurnEvaluation } from "@/types/practice.types";
 
 const turnSelect = {
   id: true,
@@ -39,7 +40,10 @@ export class TurnRepository {
     });
   }
 
-  async submitAnswer(turnId: string, data: { answerText: string; feedbackText: string; evaluation: any }) {
+  async submitAnswer(
+    turnId: string,
+    data: { answerText: string; feedbackText: string; evaluation: TurnEvaluation }
+  ) {
     return prisma.practiceTurn.update({
       where: { id: turnId },
       data: {

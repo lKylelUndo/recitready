@@ -14,15 +14,17 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { getPracticeSessionSummary } from "@/lib/api/practice"
+import { formatDate } from "@/lib/formatters"
+import { getErrorMessage } from "@/lib/errors"
+import { getSummaryDisplayLists } from "@/lib/practice/summary"
+import type { PracticeSessionSummary } from "@/types/practice"
 
 export default function SessionSummaryView() {
   const searchParams = useSearchParams()
   const sessionId = useMemo(() => searchParams.get("sessionId") ?? "", [searchParams])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [session, setSession] = useState<Awaited<
-    ReturnType<typeof getPracticeSessionSummary>
-  >["data"] | null>(null)
+  const [session, setSession] = useState<PracticeSessionSummary | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -37,7 +39,7 @@ export default function SessionSummaryView() {
         if (!cancelled) setSession(response.data)
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load summary")
+          setError(getErrorMessage(err, "Failed to load summary"))
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -49,28 +51,14 @@ export default function SessionSummaryView() {
     }
   }, [sessionId])
 
-  const summary = (session?.aiPerformanceSummary ?? {}) as {
-    abandoned?: boolean
-    message?: string
-    suggestions?: string[]
-    metrics?: Record<string, number>
-  }
-  const isAbandoned = summary.abandoned === true
-  const strengths = isAbandoned
-    ? ["No answers were submitted in this session."]
-    : [
-        `Correctness: ${summary.metrics?.correctness ?? 0}%`,
-        `Clarity: ${summary.metrics?.clarity ?? 0}%`,
-        `Completeness: ${summary.metrics?.completeness ?? 0}%`,
-      ]
-  const improvements = isAbandoned
-    ? ["Start a new session and submit at least one answer before leaving."]
-    : summary.suggestions?.length
-      ? summary.suggestions
-      : ["Keep practicing with more examples and deeper explanation."]
+  const { strengths, improvements, performanceMessage } = getSummaryDisplayLists(
+    session?.aiPerformanceSummary
+  )
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading summary...</p>
-  if (error || !session) return <p className="text-sm text-destructive">{error ?? "No summary available."}</p>
+  if (error || !session) {
+    return <p className="text-sm text-destructive">{error ?? "No summary available."}</p>
+  }
 
   return (
     <div className="space-y-8">
@@ -78,7 +66,7 @@ export default function SessionSummaryView() {
         <p className="text-sm font-medium text-accent">Session complete</p>
         <h1 className="text-2xl font-bold text-primary">Performance summary</h1>
         <p className="mt-1 text-muted-foreground">
-          {session.topic} · {new Date(session.createdAt).toLocaleDateString()}
+          {session.topic} · {formatDate(session.createdAt)}
         </p>
       </div>
 
@@ -135,10 +123,7 @@ export default function SessionSummaryView() {
         </CardHeader>
         <CardContent>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {isAbandoned
-              ? (summary.message ??
-                "This session was ended before any answers were submitted.")
-              : "This summary is generated from your submitted answers in this session."}
+            {performanceMessage}
           </p>
         </CardContent>
       </Card>

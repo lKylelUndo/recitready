@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/context/auth/AuthContext"
 import { loginUser } from "@/lib/api/auth"
+import { getErrorMessage } from "@/lib/errors"
 import { loginSchema, type LoginInput } from "@/lib/validations/auth"
 
 export default function LoginForm() {
@@ -50,9 +51,7 @@ export default function LoginForm() {
       if (response.user) setUser(response.user)
       router.replace("/dashboard")
     } catch (error) {
-      setApiError(
-        error instanceof Error ? error.message : "Failed to sign in. Try again."
-      )
+      setApiError(getErrorMessage(error, "Failed to sign in. Try again."))
     }
   }
 

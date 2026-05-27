@@ -57,30 +57,3 @@ export const TEACHER_MODES = [
     description: "High-pressure questioning that simulates terror recitation.",
   },
 ] as const
-
-export const MOCK_HISTORY = [
-  {
-    id: "1",
-    topic: "Database Normalization",
-    difficulty: "Medium",
-    teacherMode: "Strict Teacher",
-    score: 85,
-    date: "May 24, 2026",
-  },
-  {
-    id: "2",
-    topic: "Object-Oriented Programming",
-    difficulty: "Easy",
-    teacherMode: "Friendly Teacher",
-    score: 92,
-    date: "May 22, 2026",
-  },
-  {
-    id: "3",
-    topic: "Capstone Defense — System Architecture",
-    difficulty: "Hard",
-    teacherMode: "Terror Teacher",
-    score: 74,
-    date: "May 18, 2026",
-  },
-] as const

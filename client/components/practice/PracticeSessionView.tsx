@@ -21,23 +21,12 @@ import {
   getPracticeSessionSummary,
   submitAnswer,
 } from "@/lib/api/practice"
-
-function formatSeconds(seconds: number) {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}:${secs.toString().padStart(2, "0")}`
-}
-
-function formatTeacherMode(mode: string) {
-  if (mode === "friendly") return "Friendly Teacher"
-  if (mode === "strict") return "Strict Teacher"
-  if (mode === "terror") return "Terror Teacher"
-  return mode
-}
-
-function formatDifficulty(difficulty: string) {
-  return difficulty.charAt(0).toUpperCase() + difficulty.slice(1)
-}
+import {
+  formatDifficultyLabel,
+  formatSeconds,
+  formatTeacherModeLabel,
+} from "@/lib/formatters"
+import { getErrorMessage } from "@/lib/errors"
 
 export default function PracticeSessionView() {
   const searchParams = useSearchParams()
@@ -136,7 +125,7 @@ export default function PracticeSessionView() {
         setRemainingSeconds(timerSeconds)
       } catch (e) {
         if (cancelled || loadId !== loadIdRef.current) return
-        setQuestionError(e instanceof Error ? e.message : "Failed to load question")
+        setQuestionError(getErrorMessage(e, "Failed to load question"))
       } finally {
         if (!cancelled && loadId === loadIdRef.current) setLoadingQuestion(false)
       }
@@ -192,7 +181,7 @@ export default function PracticeSessionView() {
         (prev) => prev + Math.max(0, questionTimerSeconds - remainingSeconds)
       )
     } catch (error) {
-      setRuntimeError(error instanceof Error ? error.message : "Failed to submit answer")
+      setRuntimeError(getErrorMessage(error, "Failed to submit answer"))
     } finally {
       setSubmittingAnswer(false)
     }
@@ -223,7 +212,7 @@ export default function PracticeSessionView() {
       setQuestionText(next.data.questionText)
       setTurnNumber(next.data.turnIndex + 1)
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load question"
+      const message = getErrorMessage(error, "Failed to load question")
       setQuestionError(
         message.toLowerCase().includes("already ended")
           ? "This session has already ended. Start a new practice session."
@@ -244,7 +233,7 @@ export default function PracticeSessionView() {
       window.location.href = `/practice/summary?sessionId=${encodeURIComponent(sessionId)}`
     } catch (error) {
       sessionEndedRef.current = false
-      setRuntimeError(error instanceof Error ? error.message : "Failed to end session")
+      setRuntimeError(getErrorMessage(error, "Failed to end session"))
     } finally {
       setEndingSession(false)
     }
@@ -260,7 +249,7 @@ export default function PracticeSessionView() {
       window.location.href = "/dashboard"
     } catch (error) {
       sessionEndedRef.current = false
-      setRuntimeError(error instanceof Error ? error.message : "Failed to leave session")
+      setRuntimeError(getErrorMessage(error, "Failed to leave session"))
     } finally {
       setEndingSession(false)
     }
@@ -273,8 +262,8 @@ export default function PracticeSessionView() {
           <p className="text-sm font-medium text-accent">Active session</p>
           <h1 className="text-2xl font-bold text-primary">{topic || "Practice session"}</h1>
           <p className="text-sm text-muted-foreground">
-            {teacherMode ? formatTeacherMode(teacherMode) : "—"} ·{" "}
-            {difficulty ? formatDifficulty(difficulty) : "—"} · Question {turnNumber}
+            {teacherMode ? formatTeacherModeLabel(teacherMode) : "—"} ·{" "}
+            {difficulty ? formatDifficultyLabel(difficulty) : "—"} · Question {turnNumber}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

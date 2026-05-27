@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { DifficultyMode, TeacherMode } from "@/generated/prisma/client";
+import type { EndSessionPayload } from "@/types/practice.types";
 
 export class PracticeRepository {
   async createSession(data: {
@@ -53,10 +54,7 @@ export class PracticeRepository {
     });
   }
 
-  async endSession(
-    sessionId: string,
-    data: { overallScore: number; aiPerformanceSummary: any; totalDurationSeconds: number }
-  ) {
+  async endSession(sessionId: string, data: EndSessionPayload) {
     return prisma.practiceSession.update({
       where: { id: sessionId },
       data: {

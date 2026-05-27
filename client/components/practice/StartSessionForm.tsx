@@ -28,6 +28,7 @@ import {
   type StartSessionInput,
 } from "@/lib/validations/practice"
 import { startPracticeSession } from "@/lib/api/practice"
+import { getErrorMessage } from "@/lib/errors"
 
 export default function StartSessionForm() {
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -62,7 +63,7 @@ export default function StartSessionForm() {
         sessionId
       )}`
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Failed to start session")
+      setSubmitError(getErrorMessage(error, "Failed to start session"))
     }
   }
 

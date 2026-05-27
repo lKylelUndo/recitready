@@ -2,15 +2,14 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
 import { ENV } from "@/config/env";
+import {
+  AUTH_COOKIE_NAME,
+  BCRYPT_ROUNDS,
+  JWT_EXPIRES_IN,
+} from "@/constants/auth.constants";
 import { HttpError } from "@/lib/httpError";
 import { AuthRepository } from "@/repositories/auth/AuthRepository";
-
-const AUTH_COOKIE_NAME = "rr_auth";
-
-type JwtPayload = {
-  sub: string;
-  email: string;
-};
+import type { JwtPayload, LoginInput, RegisterInput } from "@/types/auth.types";
 
 export class AuthServices {
   private authRepository: AuthRepository;
@@ -19,14 +18,14 @@ export class AuthServices {
     this.authRepository = new AuthRepository();
   }
 
-  async register(input: { name: string; email: string; password: string }) {
+  async register(input: RegisterInput) {
     const existing = await this.authRepository.findUserByEmail(input.email);
 
     if (existing) {
       throw new HttpError(409, "Email is already in use");
     }
 
-    const passwordHash = await bcrypt.hash(input.password, 10);
+    const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
 
     const user = await this.authRepository.createUser({
       name: input.name,
@@ -38,7 +37,7 @@ export class AuthServices {
     return { user, token };
   }
 
-  async login(input: { email: string; password: string }) {
+  async login(input: LoginInput) {
     const user = await this.authRepository.findUserByEmail(input.email);
 
     if (!user) {
@@ -73,7 +72,8 @@ export class AuthServices {
   }
 
   private signToken(userId: string, email: string) {
-    return jwt.sign({ sub: userId, email }, ENV.JWT_SECRET, { expiresIn: "7d" });
+    return jwt.sign({ sub: userId, email }, ENV.JWT_SECRET, {
+      expiresIn: JWT_EXPIRES_IN,
+    });
   }
 }
-

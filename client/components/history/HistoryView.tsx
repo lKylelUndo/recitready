@@ -12,15 +12,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { getPracticeHistory, type PracticeHistoryItem } from "@/lib/api/practice"
-
-function formatDate(isoDate: string) {
-  return new Date(isoDate).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
-}
+import { getPracticeHistory } from "@/lib/api/practice"
+import { formatDate, formatSessionMeta } from "@/lib/formatters"
+import { getErrorMessage } from "@/lib/errors"
+import type { PracticeHistoryItem } from "@/types/practice"
 
 export default function HistoryView() {
   const [sessions, setSessions] = useState<PracticeHistoryItem[]>([])
@@ -34,7 +29,7 @@ export default function HistoryView() {
         const response = await getPracticeHistory()
         if (!cancelled) setSessions(response.data)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load history")
+        if (!cancelled) setError(getErrorMessage(err, "Failed to load history"))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -78,7 +73,11 @@ export default function HistoryView() {
               <div>
                 <CardTitle>{session.topic}</CardTitle>
                 <CardDescription>
-                  {session.difficulty} · {session.teacherMode} · {formatDate(session.createdAt)}
+                  {formatSessionMeta(
+                    session.difficulty,
+                    session.teacherMode,
+                    formatDate(session.createdAt)
+                  )}
                 </CardDescription>
               </div>
               <span className="shrink-0 rounded-full bg-primary px-3 py-1 text-sm font-semibold text-primary-foreground">

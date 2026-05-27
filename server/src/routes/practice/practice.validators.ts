@@ -22,3 +22,11 @@ export const submitAnswerRequestSchema = z.object({
   params: z.any().optional(),
 });
 
+export const endSessionRequestSchema = z.object({
+  body: z.object({
+    totalDurationSeconds: z.number().int().min(0).optional(),
+  }),
+  query: z.any().optional(),
+  params: z.any().optional(),
+});
+

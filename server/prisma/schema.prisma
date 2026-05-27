@@ -46,6 +46,7 @@ model PracticeSession {
 
   overallScore Int?
   aiPerformanceSummary Json?
+  totalDurationSeconds Int @default(0)
 
   createdAt DateTime @default(now())
   endedAt   DateTime?

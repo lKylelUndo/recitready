@@ -37,7 +37,45 @@ export class PracticeRepository {
 
   async listUserSessions(userId: string) {
     return prisma.practiceSession.findMany({
-      where: { userId },
+      where: { userId, endedAt: { not: null } },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        topic: true,
+        reportTitle: true,
+        difficulty: true,
+        teacherMode: true,
+        overallScore: true,
+        totalDurationSeconds: true,
+        createdAt: true,
+        endedAt: true,
+      },
+    });
+  }
+
+  async endSession(
+    sessionId: string,
+    data: { overallScore: number; aiPerformanceSummary: any; totalDurationSeconds: number }
+  ) {
+    return prisma.practiceSession.update({
+      where: { id: sessionId },
+      data: {
+        overallScore: data.overallScore,
+        aiPerformanceSummary: data.aiPerformanceSummary,
+        totalDurationSeconds: data.totalDurationSeconds,
+        endedAt: new Date(),
+      },
+      include: {
+        turns: {
+          orderBy: { turnIndex: "asc" },
+        },
+      },
+    });
+  }
+
+  async getDashboardStats(userId: string) {
+    const sessions = await prisma.practiceSession.findMany({
+      where: { userId, endedAt: { not: null } },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -45,19 +83,21 @@ export class PracticeRepository {
         difficulty: true,
         teacherMode: true,
         overallScore: true,
+        totalDurationSeconds: true,
         createdAt: true,
-        endedAt: true,
       },
     });
+
+    return sessions;
   }
 
-  async endSession(sessionId: string, data: { overallScore: number; aiPerformanceSummary: any }) {
-    return prisma.practiceSession.update({
+  async getSessionWithTurns(sessionId: string) {
+    return prisma.practiceSession.findUnique({
       where: { id: sessionId },
-      data: {
-        overallScore: data.overallScore,
-        aiPerformanceSummary: data.aiPerformanceSummary,
-        endedAt: new Date(),
+      include: {
+        turns: {
+          orderBy: { turnIndex: "asc" },
+        },
       },
     });
   }

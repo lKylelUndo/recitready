@@ -1,8 +1,30 @@
 import { prisma } from "@/lib/prisma";
 
+const turnSelect = {
+  id: true,
+  sessionId: true,
+  turnIndex: true,
+  questionText: true,
+  questionTimerSeconds: true,
+  createdAt: true,
+} as const;
+
 export class TurnRepository {
-  async countTurns(sessionId: string) {
-    return prisma.practiceTurn.count({ where: { sessionId } });
+  async findLatestUnansweredTurn(sessionId: string) {
+    return prisma.practiceTurn.findFirst({
+      where: { sessionId, submittedAt: null },
+      orderBy: { turnIndex: "desc" },
+      select: turnSelect,
+    });
+  }
+
+  async getNextTurnIndex(sessionId: string) {
+    const latest = await prisma.practiceTurn.findFirst({
+      where: { sessionId },
+      orderBy: { turnIndex: "desc" },
+      select: { turnIndex: true },
+    });
+    return latest ? latest.turnIndex + 1 : 0;
   }
 
   async createTurn(data: {
@@ -13,14 +35,7 @@ export class TurnRepository {
   }) {
     return prisma.practiceTurn.create({
       data,
-      select: {
-        id: true,
-        sessionId: true,
-        turnIndex: true,
-        questionText: true,
-        questionTimerSeconds: true,
-        createdAt: true,
-      },
+      select: turnSelect,
     });
   }
 

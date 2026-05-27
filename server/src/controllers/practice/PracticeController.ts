@@ -47,5 +47,42 @@ export class PracticeController {
       return next(err);
     }
   };
+
+  endSession = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.auth?.userId) throw new HttpError(401, "Unauthorized");
+      const sessionId = req.params.sessionId as string;
+      const { totalDurationSeconds } = req.body as { totalDurationSeconds?: number };
+      const summary = await this.practiceServices.endSession(
+        req.auth.userId,
+        sessionId,
+        totalDurationSeconds ?? 0
+      );
+      return res.status(200).json({ status: "success", message: "Session ended", data: summary });
+    } catch (err) {
+      return next(err);
+    }
+  };
+
+  dashboard = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.auth?.userId) throw new HttpError(401, "Unauthorized");
+      const dashboard = await this.practiceServices.dashboard(req.auth.userId);
+      return res.status(200).json({ status: "success", message: "Dashboard", data: dashboard });
+    } catch (err) {
+      return next(err);
+    }
+  };
+
+  sessionSummary = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.auth?.userId) throw new HttpError(401, "Unauthorized");
+      const sessionId = req.params.sessionId as string;
+      const session = await this.practiceServices.sessionSummary(req.auth.userId, sessionId);
+      return res.status(200).json({ status: "success", message: "Session summary", data: session });
+    } catch (err) {
+      return next(err);
+    }
+  };
 }
 

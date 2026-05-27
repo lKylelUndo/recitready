@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { ENV } from '@/config/env';
-// import routes from '@/routes';
+import routes from '@/routes';
 
 const app = express();
 
@@ -27,7 +27,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 // --- Routes Folder Prepared ---
-//app.use('/api', routes);
+app.use('/api', routes);
 
 // --- 404 Handler ---
 app.use((req: Request, res: Response) => {

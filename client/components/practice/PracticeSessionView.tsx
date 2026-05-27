@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Clock, MessageSquare, Send } from "lucide-react"
+import { Clock, MessageSquare, Mic, MicOff, Send } from "lucide-react"
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -66,6 +67,23 @@ export default function PracticeSessionView() {
   const sessionEndedRef = useRef(false)
   const loadIdRef = useRef(0)
   const totalDurationRef = useRef(0)
+  const [interimTranscript, setInterimTranscript] = useState("")
+
+  const appendTranscript = useCallback((text: string) => {
+    setAnswer((prev) => {
+      const addition = text.trim()
+      if (!addition) return prev
+      return prev.trim() ? `${prev.trim()} ${addition}` : addition
+    })
+  }, [])
+
+  const speech = useSpeechRecognition({
+    onFinalTranscript: appendTranscript,
+    onInterimTranscript: setInterimTranscript,
+  })
+
+  const canAnswer =
+    !loadingQuestion && !showFeedback && remainingSeconds > 0 && !submittingAnswer
 
   useEffect(() => {
     totalDurationRef.current = totalDurationSeconds
@@ -129,6 +147,17 @@ export default function PracticeSessionView() {
     }
   }, [sessionId])
 
+  const stopSpeech = speech.stop
+
+  useEffect(() => {
+    stopSpeech()
+    setInterimTranscript("")
+  }, [turnId, showFeedback, stopSpeech])
+
+  useEffect(() => {
+    if (!canAnswer) stopSpeech()
+  }, [canAnswer, stopSpeech])
+
   useEffect(() => {
     if (!turnId || showFeedback) return
 
@@ -147,6 +176,8 @@ export default function PracticeSessionView() {
 
   async function onSubmitAnswer() {
     if (!turnId || submittingAnswer) return
+    speech.stop()
+    setInterimTranscript("")
     setShowFeedback(false)
     setRuntimeError(null)
     const trimmed = answer.trim()
@@ -169,6 +200,8 @@ export default function PracticeSessionView() {
 
   async function onNextQuestion() {
     if (!sessionId || loadingQuestion || sessionEndedRef.current) return
+    speech.stop()
+    setInterimTranscript("")
     setAnswer("")
     setShowFeedback(false)
     setFeedbackText("")
@@ -287,25 +320,64 @@ export default function PracticeSessionView() {
         <CardHeader>
           <CardTitle>Your answer</CardTitle>
           <CardDescription>
-            Type your response. Voice input will be supported in a future update.
+            Type your answer or use the microphone for voice input (free, in your browser).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
-            placeholder="Type your answer here..."
+            placeholder="Type or speak your answer here..."
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             className="min-h-32"
-            disabled={loadingQuestion || remainingSeconds <= 0}
+            disabled={!canAnswer}
           />
-          <Button
-            className="bg-accent text-accent-foreground hover:bg-accent/90"
-            onClick={onSubmitAnswer}
-            disabled={!answer.trim() || submittingAnswer || remainingSeconds <= 0 || loadingQuestion}
-          >
-            <Send className="size-4" />
-            {submittingAnswer ? "Submitting..." : "Submit answer"}
-          </Button>
+          {interimTranscript && speech.isListening && (
+            <p className="text-sm text-muted-foreground italic">
+              Hearing: {interimTranscript}
+            </p>
+          )}
+          {!speech.isSupported && (
+            <p className="text-sm text-muted-foreground">
+              Voice input is not supported in this browser. Use Chrome or Edge, or type your
+              answer instead.
+            </p>
+          )}
+          {speech.error && (
+            <p className="text-sm text-destructive" role="alert">
+              {speech.error}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-3">
+            {speech.isSupported && (
+              <Button
+                type="button"
+                variant={speech.isListening ? "destructive" : "outline"}
+                onClick={speech.toggle}
+                disabled={!canAnswer}
+                aria-pressed={speech.isListening}
+              >
+                {speech.isListening ? (
+                  <>
+                    <MicOff className="size-4" />
+                    Stop recording
+                  </>
+                ) : (
+                  <>
+                    <Mic className="size-4" />
+                    Start voice input
+                  </>
+                )}
+              </Button>
+            )}
+            <Button
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={onSubmitAnswer}
+              disabled={!answer.trim() || !canAnswer}
+            >
+              <Send className="size-4" />
+              {submittingAnswer ? "Submitting..." : "Submit answer"}
+            </Button>
+          </div>
           {remainingSeconds === 0 && !showFeedback && (
             <div className="space-y-2">
               <p className="text-sm text-destructive">

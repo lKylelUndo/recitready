@@ -18,6 +18,10 @@ Notes (optional): ${input.notes ?? ""}
 Previous Q&A:
 ${input.history || "(none)"}
 
-Generate ONE next question only. Keep it concise and realistic for classroom oral questioning.
+Only generate questions if the topic and report title describe a real lesson or educational subject.
+If the inputs are gibberish, random text, numbers, or not a valid lesson/topic, respond with exactly: INVALID_TOPIC
+
+Otherwise, generate ONE next question only about the lesson content above.
+Keep it concise and realistic for classroom oral questioning.
 Return plain text only: no markdown, no asterisks, no bullet points, no labels like "Question:".`;
 }

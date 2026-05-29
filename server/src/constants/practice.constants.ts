@@ -1,9 +1,9 @@
 import type { DifficultyMode } from "@/generated/prisma/client";
 
 export const TIMER_BY_DIFFICULTY: Record<DifficultyMode, number> = {
-  easy: 60,
-  medium: 45,
-  hard: 30,
+  easy: 30,
+  medium: 40,
+  hard: 60,
 };
 
 export const EVALUATION_METRIC_KEYS = [

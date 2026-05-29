@@ -7,10 +7,29 @@ import routes from '@/routes';
 const app = express();
 
 // --- Core Middleware ---
-app.use(cors({
-  origin: ENV.FRONTEND_URL,
-  credentials: true
-}));
+const allowedOrigins = new Set(
+  [ENV.FRONTEND_URL, 'http://localhost:3000'].map((url) => url.replace(/\/$/, ''))
+);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const normalized = origin.replace(/\/$/, '');
+      if (allowedOrigins.has(normalized)) {
+        callback(null, normalized);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

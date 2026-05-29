@@ -5,6 +5,7 @@ import {
 } from "@/constants/practice.constants";
 import { buildEvaluateAnswerPrompt } from "@/prompts/evaluateAnswer.prompt";
 import { buildNextQuestionPrompt } from "@/prompts/nextQuestion.prompt";
+import { buildValidateTopicPrompt } from "@/prompts/validateTopic.prompt";
 import { PracticeRepository } from "@/repositories/practice/PracticeRepository";
 import { TurnRepository } from "@/repositories/practice/TurnRepository";
 import { GeminiServices } from "@/services/ai/GeminiServices";
@@ -14,6 +15,7 @@ import { parseAiJsonResponse } from "@/utils/parseAiJsonResponse";
 import { sanitizeAiText } from "@/utils/sanitizeAiText";
 import { buildSessionPerformanceSummary } from "@/utils/sessionScoring";
 import { timerForDifficulty } from "@/utils/timerForDifficulty";
+import { validateSessionLessonInputs } from "@/utils/validateLessonContent";
 import { Prisma } from "@/generated/prisma/client";
 import type { StartSessionBody } from "@/routes/practice/practice.validators";
 
@@ -23,6 +25,29 @@ export class PracticeServices {
   private geminiServices = new GeminiServices();
 
   async startSession(userId: string, input: StartSessionBody) {
+    const contentCheck = validateSessionLessonInputs(input);
+    if (!contentCheck.valid) {
+      throw new HttpError(400, contentCheck.message);
+    }
+
+    const { text: validationText } = await this.geminiServices.generateText(
+      buildValidateTopicPrompt({
+        topic: input.topic,
+        reportTitle: input.reportTitle,
+        notes: input.notes ?? null,
+      })
+    );
+    const topicGate = parseAiJsonResponse<{ valid: boolean; reason?: string }>(
+      validationText
+    );
+    if (!topicGate.valid) {
+      throw new HttpError(
+        400,
+        topicGate.reason?.trim() ||
+          "Enter a real lesson or topic before starting practice."
+      );
+    }
+
     return this.practiceRepository.createSession({
       userId,
       topic: input.topic,
@@ -54,8 +79,24 @@ export class PracticeServices {
       history,
     });
 
+    const sessionContentCheck = validateSessionLessonInputs({
+      topic: session.topic,
+      reportTitle: session.reportTitle,
+      notes: session.notes ?? undefined,
+    });
+    if (!sessionContentCheck.valid) {
+      throw new HttpError(400, sessionContentCheck.message);
+    }
+
     const { text } = await this.geminiServices.generateText(prompt);
-    const questionText = sanitizeAiText(text);
+    const rawQuestion = sanitizeAiText(text);
+    if (rawQuestion === "INVALID_TOPIC") {
+      throw new HttpError(
+        400,
+        "This session topic is not suitable for practice. Start a new session with a real lesson or topic."
+      );
+    }
+    const questionText = rawQuestion;
     const questionTimerSeconds = timerForDifficulty(session.difficulty);
 
     try {

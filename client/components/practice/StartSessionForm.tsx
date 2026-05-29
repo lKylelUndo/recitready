@@ -73,8 +73,9 @@ export default function StartSessionForm() {
         <CardHeader>
           <CardTitle>Session details</CardTitle>
           <CardDescription>
-            Enter your topic and optional notes. The AI will generate questions
-            from this content.
+            Enter a real lesson or topic and optional notes. Random text or
+            numbers are not accepted—the AI only generates questions for valid
+            subjects.
           </CardDescription>
         </CardHeader>
         <CardContent>

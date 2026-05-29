@@ -26,17 +26,17 @@ export const DIFFICULTY_MODES = [
   {
     id: "easy",
     label: "Easy",
-    description: "Basic recall questions with direct, simple questioning.",
+    description: "Basic recall questions · 30 second timer per question.",
   },
   {
     id: "medium",
     label: "Medium",
-    description: "Explanatory and analytical questions with moderate follow-ups.",
+    description: "Explanatory questions · 40 second timer per question.",
   },
   {
     id: "hard",
     label: "Hard",
-    description: "Critical thinking questions with deeper follow-up questioning.",
+    description: "Critical thinking questions · 1 minute timer per question.",
   },
 ] as const
 

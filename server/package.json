@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/server.ts",
     "build": "tsdown src/server.ts --format esm --clean --minify",
-    "start": "node ./dist/server.js",
+    "start": "node ./dist/server.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev"
   },
